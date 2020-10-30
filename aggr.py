@@ -38,7 +38,7 @@ g = nx.Graph()
 g.add_nodes_from(range(num_nodes+1))
 g.add_edges_from(train_edge_list)
 non_edge_list = list(set(list(nx.non_edges(g))) - set(test_edge_list))
-test_non_edge_list = sample(non_edge_list,len(non_edge_list)*test_fraction)
+test_non_edge_list = sample(non_edge_list,int(len(non_edge_list)*test_fraction))
 ground_truth = [1]*len(test_edge_list)+[0]*len(test_non_edge_list)
 
 print("Created dataset")
