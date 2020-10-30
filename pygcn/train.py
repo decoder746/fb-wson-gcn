@@ -13,6 +13,9 @@ import torch.optim as optim
 from pygcn.utils import load_data, accuracy
 from pygcn.models import GCN
 
+import networkx as nx
+from sklearn.metrics import average_precision_score
+
 # Training settings
 parser = argparse.ArgumentParser()
 parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -40,7 +43,7 @@ if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
 # Load data
-adj, features, labels, idx_train, idx_val, idx_test = load_data()
+adj, features, labels, idx_train, idx_val, idx_test, edge_list, adj_list = load_data()
 
 # Model and optimizer
 model = GCN(nfeat=features.shape[1],
@@ -61,9 +64,13 @@ if args.cuda:
     idx_test = idx_test.cuda()
 
 
-def loss(cos_sim,adj,tim,delta):
-    pos = cos_sim[((adj[tim].to_dense() - adj[tim-1].to_dense())>0).bool()]
-    neg = cos_sim[((adj[tim+1].to_dense() - adj[tim].to_dense())>0).bool()]
+def loss(cos_sim,edge_list,tim,delta):
+    # pos_edges_added = list(zip(*list(set(edge_list[tim]) - set(edge_list[tim-1]))))
+    # neg_edges_added = list(zip(*list(set(edge_list[tim+1]) - set(edge_list[tim]))))
+    # pos = cos_sim[pos_edges_added[0],pos_edges_added[1]]
+    # neg = cos_sim[neg_edges_added[0],neg_edges_added[1]]
+    pos = cos_sim[((adj_list[tim].to_dense() - adj_list[tim-1].to_dense())>0).bool()]
+    neg = cos_sim[((adj_list[tim+1].to_dense() - adj_list[tim].to_dense())>0).bool()]
     n_1 = pos.shape[0]
     n_2 = neg.shape[0]
     pos = pos.unsqueeze(1).expand(n_1,n_2)
@@ -82,7 +89,7 @@ def train(epoch,delta=0.5):
         output = model(features, adj[tim])
         out_norm = output/output.norm(dim=1)[:,None]
         cos_sim = torch.mm(out_norm,out_norm.transpose(0,1))
-        loss_train += loss(cos_sim,adj,tim,delta)
+        loss_train += loss(cos_sim,edge_list,tim,delta)
     loss_train.backward()
     optimizer.step()
 
@@ -93,8 +100,23 @@ def train(epoch,delta=0.5):
     model.eval()
     for tim in idx_val:
         output = model(features, adj[tim])
+        out_norm = output/output.norm(dim=1)[:,None]
         cos_sim = torch.mm(out_norm,out_norm.transpose(0,1))
         loss_val += loss(cos_sim,adj,tim,delta)
+    if epoch%5 == 0:
+        output = model(features,adj[80])
+        out_norm = output/output.norm(dim=1)[:,None]
+        cos_sim = torch.mm(out_norm,out_norm.transpose(0,1))
+        edges_added = list(set(edge_list[99]) - set(edge_list[80]))
+        G = nx.empty_graph()
+        G.add_nodes_from(range(3000))
+        G.add_edges_from(edge_list[80])
+        non_edges = list(set(nx.non_edges(G)) - set(edges_added))
+        scores = cos_sim[list(zip(*edges_added))[0],list(zip(*edges_added))[1]].tolist() + \
+                cos_sim[list(zip(*non_edges))[0],list(zip(*non_edges))[1]].tolist()
+        ground_truth = [1]*len(edges_added) + [0]*len(non_edges)
+        AP = average_precision_score(ground_truth,scores)
+        print(f'Epoch: {epoch} AP: {AP}')
 
     # loss_val = F.nll_loss(output[idx_val], labels[idx_val])
     # acc_val = accuracy(output[idx_val], labels[idx_val])

@@ -30,8 +30,11 @@ def load_data(path="data/fb-wson/", dataset="fb3k"):
     adj = []
     curr_time = np.min(edges_unordered[:,2]) + time_jumps
     curr_edges = 0
+    edge_list = []
+    adj_list = []
     for time in range(100):
         edges = edges_unordered[edges_unordered[:,2] <= curr_time][:,0:2]
+        edge_list.append(list(map(lambda x:(x[0],x[1]),edges)))
         print(f'Edges added at time stamp {time} : {len(edges) - curr_edges}')
         curr_edges = len(edges)
         adj_t = sp.coo_matrix((np.ones(edges.shape[0]), (edges[:, 0], edges[:, 1])),
@@ -40,9 +43,11 @@ def load_data(path="data/fb-wson/", dataset="fb3k"):
 
         # build symmetric adjacency matrix
         adj_t = adj_t + adj_t.T.multiply(adj_t.T > adj_t) - adj_t.multiply(adj_t.T > adj_t)
-
+        adj_list_part = adj_t
         adj_t = normalize(adj_t + sp.eye(adj_t.shape[0]))
         adj_t = sparse_mx_to_torch_sparse_tensor(adj_t)
+        adj_list_part = sparse_mx_to_torch_sparse_tensor(adj_list_part)
+        adj_list.append(adj_list_part)
         curr_time += time_jumps
         adj.append(adj_t)
 
@@ -58,7 +63,7 @@ def load_data(path="data/fb-wson/", dataset="fb3k"):
     idx_val = torch.LongTensor(idx_val)
     idx_test = torch.LongTensor(idx_test)
 
-    return adj, features, labels, idx_train, idx_val, idx_test
+    return adj, features, labels, idx_train, idx_val, idx_test, edge_list, adj_list
 
 
 def normalize(mx):
