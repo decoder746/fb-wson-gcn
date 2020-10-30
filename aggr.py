@@ -41,6 +41,8 @@ non_edge_list = list(set(list(nx.non_edges(g))) - set(test_edge_list))
 test_non_edge_list = sample(non_edge_list,len(non_edge_list)*test_fraction)
 ground_truth = [1]*len(test_edge_list)+[0]*len(test_non_edge_list)
 
+print("Created dataset")
+
 adam = list(nx.adamic_adar_index(g,test_edge_list+test_non_edge_list))
 adam_map = average_precision_score(ground_truth,list(map(lambda x:x[2],adam)))
 print(f'Adamic ap is {adam_map}')
