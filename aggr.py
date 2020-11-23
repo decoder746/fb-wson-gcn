@@ -6,8 +6,9 @@ import math
 import numpy as np
 from sklearn.metrics import average_precision_score
 
-# filename = "data/fb-wson/fb3k.csv"
-filename = "data/fb-wson/fb_correct.csv"
+# filename = "data/fb-wson/fb5k_2.csv"
+filename = "data/dblk/edge_list.csv"
+# filename = "data/fb-wson/fb_correct.csv"
 random.seed(0)
 edge_list = []
 test_fraction = 0.2

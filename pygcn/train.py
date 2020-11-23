@@ -16,6 +16,8 @@ from pygcn.models import GCN
 import networkx as nx
 from sklearn.metrics import average_precision_score
 
+from random import sample
+
 # Training settings
 parser = argparse.ArgumentParser()
 parser.add_argument('--no-cuda', action='store_true', default=False,
@@ -112,6 +114,7 @@ def train(epoch,delta=0.5):
         G.add_nodes_from(range(3000))
         G.add_edges_from(edge_list[80])
         non_edges = list(set(nx.non_edges(G)) - set(edges_added))
+        non_edges = sample(non_edges,int(0.2*len(non_edges)))
         scores = cos_sim[list(zip(*edges_added))[0],list(zip(*edges_added))[1]].tolist() + \
                 cos_sim[list(zip(*non_edges))[0],list(zip(*non_edges))[1]].tolist()
         ground_truth = [1]*len(edges_added) + [0]*len(non_edges)
